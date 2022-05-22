@@ -1,0 +1,6 @@
+*.png
+*.txt
+env38/
+__pycache__
+exp/
+*.tif
