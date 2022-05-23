@@ -30,8 +30,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.input_data = InputData()
         self.result = Result()
         
-        #self.processing_unit = ProcessingUnitThreads(self.initial_frame,self.input_data,self.result)
-        self.processing_unit = ProcessingUnit(self.initial_frame,self.input_data,self.result)
+        self.processing_unit = ProcessingUnitThreads(self.initial_frame,self.input_data,self.result)
+        #self.processing_unit = ProcessingUnit(self.initial_frame,self.input_data,self.result)
 
         self.ui_image_holder.setGeometry(11,372,1024,416)
 
@@ -219,20 +219,18 @@ class MainWindow(QtWidgets.QMainWindow):
         try:
             self.initial_frame.validate()
             self.validate_input_data()
+            self.set_notification("Calculating..")
         except BaseException as err:
             self.set_notification(str(err), 'ERROR')
             return    
 
         start_time = time.process_time()
-
-        self.set_notification("Calculating..")
+        
         self.result.start = start_time
 
         self.processing_unit.calculate_flow_velocity()
         self.processing_unit.calculate_flow_rate()
         self.processing_unit.calculate_dynamic_flow_rate()
-
-
 
         end_time = time.process_time()
         print("Process time=",  start_time, end_time)
@@ -280,7 +278,7 @@ class MainWindow(QtWidgets.QMainWindow):
             print("Degrees of freedom=",len(self.result.positions)-2)
             print("len positions=",len(self.result.positions),"len time instants=",len(self.result.time_instants))
             #print("Relative Residual Standard Deviation/error=",math.sqrt((self.result.residuals)/(len(self.result.positions)-2))/self.result.mean_position)
-            print("Process time=", time.process_time() - self.result.start)
+
             sys.stdout.close()
             self.summary_dialog.close() 
 
@@ -291,8 +289,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 f.write(dfAsString)
                 
 
-
-            
             output_data = pd.DataFrame({"Roi width":[self.initial_frame.ROI_width] ,"Roi Height":[self.initial_frame.ROI_height],"Template width":[self.initial_frame.template_width]})
             with open(info_ROI_template_file, '+w') as f:
                 f.write(" ---------------------- fichier contenant des infos sur la ROI et le template ---------------------- ")
@@ -310,6 +306,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 f.write(" ---------------------- fichier contenant les coordonnées de ROI et de template ----------------------  ")
                 dfAsString = output_data.to_string()
                 f.write(dfAsString)
+
             self.tabs.setCurrentIndex(1)
             self.plot_data.canvas.ax1.scatter(self.result.time_instants,self.result.positions,s=10,c='crimson',marker='x', label='Measured positions')
             self.plot_data.canvas.ax1.plot(self.result.time_instants,self.result.predicted_positions, '-r', c='dodgerblue', label='Linear fit')

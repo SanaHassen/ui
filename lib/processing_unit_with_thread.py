@@ -54,7 +54,7 @@ class ProcessingUnitThreads:
         time_instants = self.get_time_from_frame_rate(all_images) 
         images_filenames.sort()
         
-        for i in range(30):
+        for i in range(10):
             worker = threading.Thread(target=self.threads_job, args=(), daemon=True)
             worker.start()
             threads.append(worker)
@@ -63,13 +63,13 @@ class ProcessingUnitThreads:
             self.input_queue.put(image_path)
 
         # put this in another thread
-        while len(positions) <= len(images_filenames):
+        while len(positions) <= len(images_filenames): # len(positions) = len(images_filenames) + 1
             positions.append(self.output_queue.get())
             self.output_queue.task_done()
         
         self.input_queue.join()
         self.output_queue.join()
-            
+
         return positions,time_instants
         
 
@@ -78,6 +78,7 @@ class ProcessingUnitThreads:
             image_path = self.input_queue.get()
             try:
                 img=cv2.imread(image_path)
+                img = img[self.initial_frame.ROI_LeftCorner_y:self.initial_frame.ROI_RightCorner_y, self.initial_frame.ROI_LeftCorner_x:self.initial_frame.ROI_RightCorner_x]
             except:
                 self.set_notification("problème de chargement de l'image ")
                 return

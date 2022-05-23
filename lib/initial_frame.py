@@ -25,7 +25,7 @@ class InitialFrame:
         self.template_frame = None
         self.template_width = None
         self.template_height = None
-        self.template_LeftCorner_x = 0
+        self.template_LeftCorner_x = None
         self.template_LeftCorner_y = 0
         self.template_RightCorner_x = 0
         self.template_RightCorner_y = 0
@@ -67,7 +67,7 @@ class InitialFrame:
         else:
             self.ROI_RightCorner_y = self.original_frame_height
 
-        print('left',self.ROI_LeftCorner_x,self.ROI_LeftCorner_y,self.ROI_RightCorner_x, self.ROI_RightCorner_y)
+        print('ROI coordinates',self.ROI_LeftCorner_x,self.ROI_LeftCorner_y,self.ROI_RightCorner_x, self.ROI_RightCorner_y)
         self.ROI_frame = self.ROI_frame[self.ROI_LeftCorner_y:self.ROI_RightCorner_y,self.ROI_LeftCorner_x:self.ROI_RightCorner_x]
         self.ROI_width = self.ROI_frame.shape[1]
         self.ROI_height = self.ROI_frame.shape[0]
@@ -89,4 +89,4 @@ class InitialFrame:
         if  self.ROI_frame is None:
             raise Exception("Veuillez sélectionner une image")
         elif self.template_LeftCorner_x is None:
-            raise Exception("Veuillez sélectionner une template et/ou ROI")
+            raise Exception("Veuillez sélectionner un template et/ou ROI")
