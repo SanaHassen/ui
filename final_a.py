@@ -282,39 +282,55 @@ class MainWindow(QtWidgets.QMainWindow):
         counter=0
         displacements,template_xLeft_coordinates,ROI_xLeft_coordinates,positions = [],[],[],[]
         n=0
+        start_time_begin = time.perf_counter()
         images_filenames = self.images_storage(self.fname)
         time_instants = self.time_from_frame_rate(images_filenames)
         new_template_LeftCorner_x = self.template_LeftCorner_x
         images_filenames.sort()
         images_equals = self.images_are_equals(self.original_image,self.ROI_image)
         for i in range(0,len(images_filenames)-1):
-            print(images_filenames[i])
-            try:
-                img1=cv2.imread(images_filenames[i])
-                img2=cv2.imread(images_filenames[i+1])  
-            except:
-                self.notifications.setText("problème de chargement de l'image " + str(i))
-                self.notifications.setFont(QFont("Times", 10, QFont.Bold))
-                return
+            current_displacement = int(np.sum(displacements))
+            if i == 0:
+                print("boucle i = 0")
+                try:
+                    img1=cv2.imread(images_filenames[i])
+                    img2=cv2.imread(images_filenames[i+1])
+                except:
+                    #self.set_notification("problème de chargement de l'image " + str(i))
+                    return
 
-            try:
-                img1=imutils.rotate_bound(img1, 90*self.modulo)
-                #cv2.imshow("a",img1)
-                img2=imutils.rotate_bound(img2, 90*self.modulo)
-                #cv2.imshow("b",img2)
+                try:
+                    if self.initial_frame.modulo  != 0: 
+                        img1=imutils.rotate_bound(img1, 90*self.initial_frame.modulo)
+                        img2=imutils.rotate_bound(img2, 90*self.initial_frame.modulo)
+                except:
+                    #self.set_notification("problème dans la rotation des images ")
+                    return
+            else:
+                print("boucle i # 0")
+                try:
+                    img1 = img2_copy
+                    img2 = cv2.imread(images_filenames[i+1])
+                    print(images_filenames[i+1])
+                except:
+                    #self.set_notification("problème de chargement de l'image " + str(i))
+                    return
 
-            except:
-                self.notifications.setText("problème dans la rotation des images ")
-                self.notifications.setFont(QFont("Times", 10, QFont.Bold))
-                return
+                try:
+                    if self.initial_frame.modulo  != 0: 
+                        img2=imutils.rotate_bound(img2, 90*self.initial_frame.modulo)
+                except:
+                    #self.set_notification("problème dans la rotation des images ")
+                    return
+
+            img2_copy = img2.copy()
             # print("ROI_LeftCorner_x",self.ROI_LeftCorner_x)
             # print("ROI_width",self.ROI_width)
             # print("calcul", self.ROI_LeftCorner_x + self.ROI_width + np.sum(displacements))
             # print("width",self.original_image_width)
             if images_equals == False:
                 counter += 1
-                if (self.ROI_LeftCorner_x + self.ROI_width + int(np.sum(displacements)) < self.original_image_width):  # quand ROI n'a pas atteint le bord de l'image
-                    case = "case 1"
+                if (self.ROI_LeftCorner_x + self.ROI_width +  current_displacement < self.original_image_width):  # quand ROI n'a pas atteint le bord de l'image
                     self.ROI_LeftCorner_x_new=int (self.ROI_LeftCorner_x+ np.sum(displacements))
                     print("left_x", self.ROI_LeftCorner_x, "left_new",self.ROI_LeftCorner_x_new)
                     self.ROI_RightCorner_x_new =int (self.ROI_LeftCorner_x+self.ROI_width + np.sum(displacements))
@@ -323,8 +339,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     img2=img2[self.ROI_LeftCorner_y:self.ROI_RightCorner_y, self.ROI_LeftCorner_x_new:self.ROI_RightCorner_x_new]
                     #Define the template from img1, keeping same intial coordinates (see explanation above)
                     img_template=img1[self.template_LeftCorner_y:self.template_RightCorner_y,self.template_LeftCorner_x:self.template_RightCorner_x]
-                elif (self.ROI_LeftCorner_x + self.ROI_width + int(np.sum(displacements)) >= self.original_image_width):  # onfixe le ROI  et on change les coordonnées de la template
-                    case = "case 2"
+                elif (self.ROI_LeftCorner_x + self.ROI_width +  current_displacement >= self.original_image_width):  # onfixe le ROI  et on change les coordonnées de la template
                     self.ROI_LeftCorner_x_new =self.original_image_width - self.ROI_width
                     self.ROI_RightCorner_x_new = self.original_image_width
                     img1=img1[self.ROI_LeftCorner_y:self.ROI_RightCorner_y, self.ROI_LeftCorner_x_new:self.ROI_RightCorner_x_new]
@@ -338,53 +353,37 @@ class MainWindow(QtWidgets.QMainWindow):
                         break
 
             else:   
-                    case = "case 3"
                     counter=counter+1
-                    new_template_LeftCorner_x=self.template_LeftCorner_x+int(np.sum(displacements))
-                    new_template_RightCorner_x=self.template_RightCorner_x+int(np.sum(displacements))
+                    new_template_LeftCorner_x=self.template_LeftCorner_x+ current_displacement
+                    new_template_RightCorner_x=self.template_RightCorner_x+ current_displacement
                     img_template=img1[self.template_LeftCorner_y:self.template_RightCorner_y,new_template_LeftCorner_x:new_template_RightCorner_x]
                     n=n+1
                     if new_template_RightCorner_x >= self.original_image_width - 50:
                         break 
 
-            #template_xLeft_coordinates.append(new_template_LeftCorner_x)
-            #ROI_xLeft_coordinates.append(self.ROI_LeftCorner_x_new)
-           
-            # try:        
-            #     img_template = cv2.GaussianBlur(img_template,(5,5),cv2.BORDER_DEFAULT)
-            #     img2 = cv2.GaussianBlur(img2,(5,5),cv2.BORDER_DEFAULT)
-
-            # except:
-                # self.notifications.setText("ERREUR!! le template est vide")
-                # self.notifications.setFont(QFont("Times", 10, QFont.Bold))
-                # return
-            
             correlation_ROI_template = cv2.matchTemplate(img2,img_template,cv2.TM_SQDIFF)
             min_val,max_val,min_loc,max_loc = cv2.minMaxLoc(correlation_ROI_template)
             correlation_ROI_template = correlation_ROI_template[0,:]
-            #corr_array = np.asarray(correlation_ROI_template[0,:])
-            #print("len_corr_aaray",len(corr_array))
             x = np.arange(len(correlation_ROI_template))
-            #min_cor=min(corr_array)
-            #min_loc=x[np.where(corr_array==min_cor)[0]][0] 
             min_loc = min_loc[0]
-            fit_params=np.polyfit(x[min_loc-30:min_loc+30],correlation_ROI_template[min_loc-30:min_loc+30],50) #polyfit: x, y, deg:50 
-            #create a polymnome using fit_params with x_fit : x abs of 0.0001 resolution and y_fit from x_fit and fit_params
-            x_fit = np.arange(min_loc-30,min_loc+30-1,0.0001) 
+            print(min_loc)
+            fit_params=np.polyfit(x[min_loc-30:min_loc+30],correlation_ROI_template[min_loc-30:min_loc+30],10) #polyfit: x, y, deg:50 
+            x_fit = np.arange(min_loc-30,min_loc+30-1,0.01)
             y_fit=np.polyval(fit_params, x_fit)
             y_fit=np.asarray(y_fit)
-            #find min after 0.0001 pixel resolution
             min_fit=min(y_fit)
             min_loc_fit=x_fit[np.where(y_fit==min_fit)[0]][0]
-            #Bmin_val,max_val,min_loc,max_loc = cv2.minMaxLoc(y_fit)
             displacements.append(min_loc_fit-new_template_LeftCorner_x)
 
+
         positions.append(pos)
-        print(counter)
         for j in range (0,counter):
             pos=pos+displacements[j] 
             positions.append(pos)
-    
+
+        whole_process_time =   time.perf_counter() - start_time_begin
+        print(whole_process_time)
+
         return positions,time_instants
     
     def flow_velocity(self):
@@ -433,7 +432,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.notifications.setFont(QFont("Times", 10, QFont.Bold))
             return
 
-        self.start = time.process_time()
+        self.start =  time.perf_counter()
         
         try:
              self.taillePixel = float(self.taille_pixel.text())
@@ -459,7 +458,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.notifications.setFont(QFont("Times", 10, QFont.Bold))
 
         self.velocity,self.residuals=self.flow_velocity()
-        print("Process time=", time.process_time() - self.start)
+        self.Process_time=  time.perf_counter() - self.start
 
         self.flow_rate_value=self.velocity*math.pi*(float(self.diametre)/2)**2*60*1e-09
         self.flow_rate.setText(str(self.flow_rate_value))
@@ -485,7 +484,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.recap.mean_position.setText(str(self.mean_position))
         self.recap.nb_position.setText(str(self.positions_nomber))
         self.recap.nb_instants.setText(str(self.time_instants_number))
-        self.recap.process_time.setText(str(time.process_time() - self.start))
+        self.recap.process_time.setText(str(self.Process_time))
         self.recap.show()
 
     def enregistrer_recap(self):

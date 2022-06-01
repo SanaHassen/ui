@@ -1,0 +1,6 @@
+ process time fro two consecutive images ( 2 images )
+load imags time= 0.014881299999998987
+whole process time 111.3274053
+cut template roi time 0.003340400000013233
+match template time 0.009097900000000436
+optimisation time 0.0015075000000024374

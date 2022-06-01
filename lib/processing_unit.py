@@ -6,6 +6,7 @@ import imutils
 import os, glob
 import numpy as np
 import math, time
+import sys
 
 class ProcessingUnit:
     def __init__(self, initial_frame, input_data, result ) -> None:
@@ -46,9 +47,10 @@ class ProcessingUnit:
         displacements = []
         positions = []
         n=0
-
-        images_filenames = self.load_images() # complexity 1
-        time_instants = self.get_time_from_frame_rate(images_filenames) # 1
+        start_time_begin = time.perf_counter()
+        images_filenames = self.load_images() 
+        load_images_time =  time.perf_counter() - start_time_begin
+        time_instants = self.get_time_from_frame_rate(images_filenames) 
 
         new_template_LeftCorner_x = self.initial_frame.template_LeftCorner_x
         images_filenames.sort()
@@ -57,36 +59,53 @@ class ProcessingUnit:
         
         for i in range(0,len(images_filenames)-1):
             current_displacement = int(np.sum(displacements))
+            if i == 0:
+               
+                try:
+                    img1=cv2.imread(images_filenames[i])
+                    img2=cv2.imread(images_filenames[i+1])
+                    
+                except:
+                    #self.set_notification("problème de chargement de l'image " + str(i))
+                    return
 
-            try:
-                img1=cv2.imread(images_filenames[i])
-                img2=cv2.imread(images_filenames[i+1])  
-            except:
-                self.set_notification("problème de chargement de l'image " + str(i))
-                return
+                try:
+                    if self.initial_frame.modulo  != 0: 
+                        img1=imutils.rotate_bound(img1, 90*self.initial_frame.modulo)
+                        img2=imutils.rotate_bound(img2, 90*self.initial_frame.modulo)
+                except:
+                    #self.set_notification("problème dans la rotation des images ")
+                    return
+            else:
+                try:
+                    img1 = img2_copy
+                    img2 = cv2.imread(images_filenames[i+1])
+                except:
+                    #self.set_notification("problème de chargement de l'image " + str(i))
+                    return
 
-            try:
-                if self.initial_frame.modulo  != 0: 
-                    img1=imutils.rotate_bound(img1, 90*self.initial_frame.modulo)
-                    img2=imutils.rotate_bound(img2, 90*self.initial_frame.modulo)
-            except:
-                self.set_notification("problème dans la rotation des images ")
-                return
+                try:
+                    if self.initial_frame.modulo  != 0: 
+                        img2=imutils.rotate_bound(img2, 90*self.initial_frame.modulo)
+                except:
+                    #self.set_notification("problème dans la rotation des images ")
+                    return
+
+            img2_copy = img2.copy()
 
             if images_equals == False:
                 counter += 1
-                if (self.initial_frame.ROI_LeftCorner_x + self.initial_frame.ROI_width + int(np.sum(displacements)) < self.initial_frame.original_frame_width):  # quand ROI n'a pas atteint le bord de l'image
-                    case = "case 1"
+                if (self.initial_frame.ROI_LeftCorner_x + self.initial_frame.ROI_width + current_displacement < self.initial_frame.original_frame_width):  # quand ROI n'a pas atteint le bord de l'image
                     self.initial_frame.ROI_LeftCorner_x_new=int (self.initial_frame.ROI_LeftCorner_x+ np.sum(displacements))
-                    print("left_x", self.initial_frame.ROI_LeftCorner_x, "left_new",self.initial_frame.ROI_LeftCorner_x_new)
+                    
                     self.initial_frame.ROI_RightCorner_x_new =int (self.initial_frame.ROI_LeftCorner_x+self.initial_frame.ROI_width + np.sum(displacements))
-                    print("right_x", self.initial_frame.ROI_RightCorner_x, "right_new",self.initial_frame.ROI_RightCorner_x_new)
+                   
                     img1=img1[self.initial_frame.ROI_LeftCorner_y:self.initial_frame.ROI_RightCorner_y, self.initial_frame.ROI_LeftCorner_x_new:self.initial_frame.ROI_RightCorner_x_new]
                     img2=img2[self.initial_frame.ROI_LeftCorner_y:self.initial_frame.ROI_RightCorner_y, self.initial_frame.ROI_LeftCorner_x_new:self.initial_frame.ROI_RightCorner_x_new]
                     img_template=img1[self.initial_frame.template_LeftCorner_y:self.initial_frame.template_RightCorner_y,self.initial_frame.template_LeftCorner_x:self.initial_frame.template_RightCorner_x]
                
-                elif (self.initial_frame.ROI_LeftCorner_x + self.initial_frame.ROI_width + int(np.sum(displacements)) >= self.initial_frame.original_frame_width):  # onfixe le ROI  et on change les coordonnées de la template
-                    case = "case 2"
+                elif (self.initial_frame.ROI_LeftCorner_x + self.initial_frame.ROI_width + current_displacement >= self.initial_frame.original_frame_width):  # onfixe le ROI  et on change les coordonnées de la template
+                   
                     self.initial_frame.ROI_LeftCorner_x_new =self.initial_frame.original_frame_width - self.initial_frame.ROI_width
                     self.initial_frame.ROI_RightCorner_x_new = self.initial_frame.original_frame_width
                     img1=img1[self.initial_frame.ROI_LeftCorner_y:self.initial_frame.ROI_RightCorner_y, self.initial_frame.ROI_LeftCorner_x_new:self.initial_frame.ROI_RightCorner_x_new]
@@ -99,34 +118,39 @@ class ProcessingUnit:
                         break
 
             else:   
-                    case = "case 3"
                     counter=counter+1
-                    new_template_LeftCorner_x=self.initial_frame.template_LeftCorner_x+int(np.sum(displacements))
-                    new_template_RightCorner_x=self.initial_frame.template_RightCorner_x+int(np.sum(displacements))
+                    new_template_LeftCorner_x=self.initial_frame.template_LeftCorner_x+current_displacement
+                    new_template_RightCorner_x=self.initial_frame.template_RightCorner_x+current_displacement
                     img_template=img1[self.initial_frame.template_LeftCorner_y:self.initial_frame.template_RightCorner_y,new_template_LeftCorner_x:new_template_RightCorner_x]
                     n=n+1
                     if new_template_RightCorner_x >= self.initial_frame.original_frame_width - 50:
                         break 
-
+           
             correlation_ROI_template = cv2.matchTemplate(img2,img_template,cv2.TM_SQDIFF)
             min_val,max_val,min_loc,max_loc = cv2.minMaxLoc(correlation_ROI_template)
             correlation_ROI_template = correlation_ROI_template[0,:]
             x = np.arange(len(correlation_ROI_template))
             min_loc = min_loc[0]
-            fit_params=np.polyfit(x[min_loc-30:min_loc+30],correlation_ROI_template[min_loc-30:min_loc+30],50) #polyfit: x, y, deg:50 
-            x_fit = np.arange(min_loc-30,min_loc+30-1,0.0001)
+            try:
+                fit_params=np.polyfit(x[min_loc-30:min_loc+30],correlation_ROI_template[min_loc-30:min_loc+30],10)
+            except:
+                return 
+            x_fit = np.arange(min_loc-30,min_loc+30-1,0.01)
             y_fit=np.polyval(fit_params, x_fit)
             y_fit=np.asarray(y_fit)
             min_fit=min(y_fit)
             min_loc_fit=x_fit[np.where(y_fit==min_fit)[0]][0]
             displacements.append(min_loc_fit-new_template_LeftCorner_x)
-
+            print(f"processing images {i} and {i+1} ....")
+        
 
         positions.append(pos)
-        print(counter)
         for j in range (0,counter):
             pos=pos+displacements[j] 
             positions.append(pos)
+        
+        whole_process_time =   time.perf_counter() - start_time_begin
+        print("whole process time", whole_process_time)
 
         return positions,time_instants
 
@@ -153,4 +177,6 @@ class ProcessingUnit:
         vitesse_dynamique=np.asarray(vitesse_dynamique)
         flow_rate_dynamique=vitesse_dynamique*math.pi*(float(self.input_data.diametre)/2)**2*60*1e-09
         self.result.flow_rate_dynm = flow_rate_dynamique
+
+   
   

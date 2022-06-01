@@ -29,9 +29,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.initial_frame = InitialFrame()
         self.input_data = InputData()
         self.result = Result()
+        self.execution_time = 0
         
-        self.processing_unit = ProcessingUnitThreads(self.initial_frame,self.input_data,self.result)
-        #self.processing_unit = ProcessingUnit(self.initial_frame,self.input_data,self.result)
+        #self.processing_unit = ProcessingUnitThreads(self.initial_frame,self.input_data,self.result)
+        self.processing_unit = ProcessingUnit(self.initial_frame,self.input_data,self.result)
 
         self.ui_image_holder.setGeometry(11,372,1024,416)
 
@@ -224,17 +225,17 @@ class MainWindow(QtWidgets.QMainWindow):
             self.set_notification(str(err), 'ERROR')
             return    
 
-        start_time = time.process_time()
+        #start_time = time.perf_counter()
         
-        self.result.start = start_time
+        #self.result.start = start_time
 
         self.processing_unit.calculate_flow_velocity()
         self.processing_unit.calculate_flow_rate()
         self.processing_unit.calculate_dynamic_flow_rate()
 
-        end_time = time.process_time()
-        print("Process time=",  start_time, end_time)
-        print("Process time=", end_time - start_time)
+        #end_time = time.perf_counter()
+        #self.execution_time = end_time - start_time
+        #print(self.execution_time)
 
         self.ui_flow_rate_result.setText(str(self.result.flow_rate_value))
         self.set_notification("débit calculé", 'SUCCESS')
@@ -258,7 +259,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.summary_dialog.mean_position.setText(str(self.result.mean_position))
         self.summary_dialog.nb_position.setText(str(self.result.positions_nomber))
         self.summary_dialog.nb_instants.setText(str(self.result.time_instants_number))
-        self.summary_dialog.process_time.setText(str(time.process_time() - self.result.start))
+        self.summary_dialog.process_time.setText(str(self.execution_time))
         self.summary_dialog.show()
 
     def on_summary_confirm_button_clicked(self):
@@ -309,7 +310,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
             self.tabs.setCurrentIndex(1)
             self.plot_data.canvas.ax1.scatter(self.result.time_instants,self.result.positions,s=10,c='crimson',marker='x', label='Measured positions')
-            self.plot_data.canvas.ax1.plot(self.result.time_instants,self.result.predicted_positions, '-r', c='dodgerblue', label='Linear fit')
+            self.plot_data.canvas.ax1.plot(self.result.time_instants,self.result.predicted_positions, c='dodgerblue', label='Linear fit')
             self.plot_data.canvas.ax2.plot(self.result.time_instants_dynm,self.result.flow_rate_dynm,'x-', color="crimson")
             self.plot_data.canvas.ax3.hist(self.result.flow_rate_dynm, bins='auto',color='dodgerblue',edgecolor='black')
             self.plot_data.canvas.draw()

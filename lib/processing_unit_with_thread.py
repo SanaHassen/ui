@@ -53,28 +53,32 @@ class ProcessingUnitThreads:
         images_filenames = all_images[1:]
         time_instants = self.get_time_from_frame_rate(all_images) 
         images_filenames.sort()
-        
-        for i in range(10):
-            worker = threading.Thread(target=self.threads_job, args=(), daemon=True)
-            worker.start()
-            threads.append(worker)
 
         for image_path in images_filenames:
             self.input_queue.put(image_path)
+        
+        for i in range(30):
+            worker = threading.Thread(target=self.threads_job, args=(), daemon=True)
+            threads.append(worker)
 
+        for worker in threads:
+            worker.start()
+            
         # put this in another thread
         while len(positions) <= len(images_filenames): # len(positions) = len(images_filenames) + 1
-            positions.append(self.output_queue.get())
-            self.output_queue.task_done()
+            positions.append(self.output_queue.get()) #queue doesn't have the list props so it's better to work with list
+            self.output_queue.task_done() #to free semaphore: enable new thread reader to read from output queue
         
         self.input_queue.join()
         self.output_queue.join()
+
+        positions.sort()
 
         return positions,time_instants
         
 
     def threads_job(self):
-        while True: 
+        while True: # pass to next image each time processsing is finished
             image_path = self.input_queue.get()
             try:
                 img=cv2.imread(image_path)
@@ -96,14 +100,14 @@ class ProcessingUnitThreads:
             x = np.arange(len(correlation_ROI_template))
             min_loc = min_loc[0]
             fit_params=np.polyfit(x[min_loc-30:min_loc+30],correlation_ROI_template[min_loc-30:min_loc+30],50) #polyfit: x, y, deg:50 
-            x_fit = np.arange(min_loc-30,min_loc+30-1,0.0001)
+            x_fit = np.arange(min_loc-30,min_loc+30-1,0.01)
             y_fit=np.polyval(fit_params, x_fit)
             y_fit=np.asarray(y_fit)
             min_fit=min(y_fit) 
             min_loc_fit=x_fit[np.where(y_fit==min_fit)[0]][0]
 
             self.output_queue.put(min_loc_fit)
-            self.input_queue.task_done()
+            self.input_queue.task_done() # to unlock semaphore: enable new thread to read from input queue
 
 
 
