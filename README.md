@@ -1,4 +1,4 @@
-# ui
+# environnement virtuel
 
 pour l'activation de l'environnement virtuel:
 
